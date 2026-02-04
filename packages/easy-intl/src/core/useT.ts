@@ -1,54 +1,60 @@
+"use client";
+
 import { useEasyIntl } from "./context";
-import { parseTranslation } from "./parser";
-import type { TranslationKeys, TranslationFunction } from "../types";
+import type { TranslationFunction } from "../types";
 
 /**
- * Load translations for a component
- * @param componentName Name of the component (e.g., 'PostCard')
- * @param locale Current locale
- * @returns Translation keys object
+ * Parse translation string with variable substitution and formatters
  */
-async function loadTranslations(
-  componentName: string,
-  locale: string,
-): Promise<TranslationKeys> {
-  try {
-    // Dynamic import of co-located translation file
-    // e.g., ./PostCard.en.t.json
-    const translations = await import(`${componentName}.${locale}.t.json`);
-    return translations.default || translations;
-  } catch (error) {
-    console.warn(
-      `[easy-intl] Failed to load translations for ${componentName}.${locale}.t.json`,
-    );
-    return {};
-  }
-}
+function parseTranslation(
+  template: string,
+  params?: Record<string, any>,
+  locale?: string,
+  formatters?: any
+): string {
+  if (!params) return template;
 
-/**
- * Hook to use translations
- * @example
- * const t = useT();
- * t('welcome', { name: 'John' }) → "Welcome John!"
- */
-export function useT(): TranslationFunction {
-  const { locale, formatters, translations } = useEasyIntl();
+  return template.replace(/\{([^}]+)\}/g, (match, key) => {
+    const parts = key.split(":");
+    const varName = parts[0].trim();
+    const formatterPart = parts[1]?.trim();
 
-  // Simple function call
-  const translationFunction = ((key: string, params?: Record<string, any>) => {
-    const template = translations[key];
+    const value = params[varName];
+    if (value === undefined) return match;
 
-    if (!template) {
-      console.warn(`[easy-intl] Missing translation: ${key}`);
-      return key; // Fallback: return the key itself
+    if (!formatterPart) return String(value);
+
+    const formatterMatch = formatterPart.match(/^(\w+)\(([^)]*)\)$/);
+    if (!formatterMatch) return String(value);
+
+    const [, formatterName, args] = formatterMatch;
+    const formatter = formatters?.[formatterName];
+
+    if (!formatter) {
+      console.warn(`Unknown formatter: ${formatterName}`);
+      return String(value);
     }
 
-    return parseTranslation(template, params || {}, formatters, locale);
-  }) as TranslationFunction;
+    const formatterArgs = args ? args.split(",").map((a: string) => a.trim()) : [];
+    return formatter(value, locale, ...formatterArgs);
+  });
+}
 
-  // Attach locale and formatters as properties
-  translationFunction.locale = locale;
-  translationFunction.formatters = formatters;
+export function useT(): TranslationFunction {
+  const { locale, translations, formatters } = useEasyIntl();
 
-  return translationFunction;
+  const t: TranslationFunction = (key, params) => {
+    const template = translations[key];
+    if (!template) {
+      console.warn(`Missing translation: ${key}`);
+      return key;
+    }
+
+    return parseTranslation(template, params, locale, formatters);
+  };
+
+  t.locale = locale;
+  t.formatters = formatters;
+
+  return t;
 }
