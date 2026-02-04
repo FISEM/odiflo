@@ -14,7 +14,7 @@ describe("EasyIntlProvider", () => {
     };
 
     render(
-      <EasyIntlProvider locale="fr">
+      <EasyIntlProvider locale="fr" translations={{}}>
         <TestComponent />
       </EasyIntlProvider>,
     );
@@ -32,7 +32,7 @@ describe("EasyIntlProvider", () => {
     };
 
     render(
-      <EasyIntlProvider locale="en">
+      <EasyIntlProvider locale="en" translations={{}}>
         <TestComponent />
       </EasyIntlProvider>,
     );
@@ -54,7 +54,11 @@ describe("EasyIntlProvider", () => {
     };
 
     render(
-      <EasyIntlProvider locale="en" formatters={customFormatters}>
+      <EasyIntlProvider
+        locale="en"
+        translations={{}}
+        formatters={customFormatters}
+      >
         <TestComponent />
       </EasyIntlProvider>,
     );
@@ -74,7 +78,7 @@ describe("useT hook", () => {
     };
 
     render(
-      <EasyIntlProvider locale="fr">
+      <EasyIntlProvider locale="fr" translations={{}}>
         <TestComponent />
       </EasyIntlProvider>,
     );
@@ -98,20 +102,70 @@ describe("useT hook", () => {
     consoleSpy.mockRestore();
   });
 
-  // TODO: Add tests for template literal API when build-time plugin is implemented
-  // it('should support template literal syntax', () => {
-  //   const TestComponent = () => {
-  //     const t = useT();
-  //     const result = t`welcome`({ name: 'John' });
-  //     return <div>{result}</div>;
-  //   };
-  //
-  //   const { getByText } = render(
-  //     <EasyIntlProvider locale="en">
-  //       <TestComponent />
-  //     </EasyIntlProvider>
-  //   );
-  //
-  //   expect(getByText(/John/)).toBeInTheDocument();
-  // });
+  it("should translate with simple key", () => {
+    let result: string | undefined;
+
+    const TestComponent = () => {
+      const t = useT();
+      result = t("welcome", { name: "John" });
+      return null;
+    };
+
+    render(
+      <EasyIntlProvider
+        locale="en"
+        translations={{ welcome: "Welcome {name}!" }}
+      >
+        <TestComponent />
+      </EasyIntlProvider>,
+    );
+
+    expect(result).toBe("Welcome John!");
+  });
+
+  it("should translate with formatters", () => {
+    let result: string | undefined;
+
+    const TestComponent = () => {
+      const t = useT();
+      result = t("price", { amount: 49.99 });
+      return null;
+    };
+
+    render(
+      <EasyIntlProvider
+        locale="en"
+        translations={{ price: "Price: {amount:currency(USD)}" }}
+      >
+        <TestComponent />
+      </EasyIntlProvider>,
+    );
+
+    expect(result).toContain("49.99");
+    expect(result).toContain("$");
+  });
+
+  it("should warn on missing translation", () => {
+    let result: string | undefined;
+    const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
+
+    const TestComponent = () => {
+      const t = useT();
+      result = t("missing");
+      return null;
+    };
+
+    render(
+      <EasyIntlProvider locale="en" translations={{}}>
+        <TestComponent />
+      </EasyIntlProvider>,
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[easy-intl] Missing translation: missing",
+    );
+    expect(result).toBe("missing"); // Fallback to key
+
+    consoleSpy.mockRestore();
+  });
 });

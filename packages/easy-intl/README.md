@@ -1,14 +1,14 @@
 # @odiflo/easy-intl
 
-Component-level internationalization with template literals and custom formatters.
+Component-level internationalization with simple API and custom formatters.
 
 ## Features
 
-- ✅ **Simple API** - Clean syntax `t('key', params)`
-- ✅ **Co-location** - Translations live next to components
+- ✅ **Simple API** - Clean syntax `t('key', params)` 
 - ✅ **Custom formatters** - Extensible formatter system with `{var:formatter(params)}`
 - ✅ **Type-safe** - Full TypeScript support
-- ✅ **Lightweight** - Minimal API, maximum power
+- ✅ **Lightweight** - Minimal bundle size
+- ✅ **React 16.8+** - Works with all modern React versions
 
 ## Installation
 
@@ -19,7 +19,6 @@ pnpm add @odiflo/easy-intl
 ```
 
 **Requirements:**
-
 - React >= 16.8.0 (hooks support)
 - Works with React 16.8+, 17.x, 18.x, and 19.x
 
@@ -31,161 +30,188 @@ pnpm add @odiflo/easy-intl
 // app/layout.tsx
 import { EasyIntlProvider } from "@odiflo/easy-intl";
 
+const translations = {
+  welcome: "Welcome {name}!",
+  price: "Price: {amount:currency(USD)}",
+  readMore: "Read more",
+};
+
 export default function RootLayout({ children }) {
   return (
-    <EasyIntlProvider value={{ locale: "en" }}>{children}</EasyIntlProvider>
+    <EasyIntlProvider locale="en" translations={translations}>
+      {children}
+    </EasyIntlProvider>
   );
 }
 ```
 
-### 2. Create Translation Files
-
-```
-components/
-  PostCard.tsx
-  PostCard.en.t.json  ← English translations
-  PostCard.fr.t.json  ← French translations
-```
-
-```json
-// PostCard.en.t.json
-{
-  "title": "Posted {time:date(long)} ago",
-  "readMore": "Read more",
-  "price": "Price: {amount:currency(USD)}"
-}
-```
-
-```json
-// PostCard.fr.t.json
-{
-  "title": "Publié il y a {time:date(long)}",
-  "readMore": "Lire la suite",
-  "price": "Prix : {amount:currency(EUR)}"
-}
-```
-
-### 3. Use in Component
+### 2. Use in Component
 
 ```tsx
 // PostCard.tsx
 import { useT } from "@odiflo/easy-intl";
 
-export function PostCard({ timestamp, price }) {
+export function PostCard({ username, price }) {
   const t = useT();
 
   return (
     <div>
-      <h3>{t("title", { time: timestamp })}</h3>
-      <p>{t("price", { amount: price })}</p>
-      <a>{t("readMore")}</a>
+      <h3>{t('welcome', { name: username })}</h3>
+      <p>{t('price', { amount: price })}</p>
+      <a>{t('readMore')}</a>
     </div>
   );
 }
+```
+
+**Output:**
+```
+Welcome John!
+Price: $49.00
+Read more
 ```
 
 ## Built-in Formatters
 
 ### Currency
 
-```json
-{
-  "price": "{amount:currency(USD)}"
-}
+```typescript
+const translations = {
+  price: "{amount:currency(USD)}"  // → "$49.99"
+};
+
+t('price', { amount: 49.99 });
 ```
+
+Supported currencies: USD, EUR, GBP, JPY, etc. (all ISO 4217 codes)
 
 ### Date
 
-```json
-{
-  "published": "{date:date(long)}"
-}
+```typescript
+const translations = {
+  published: "{date:date(long)}"  // → "January 15, 2024"
+};
+
+t('published', { date: new Date() });
 ```
+
+Formats: `short`, `medium`, `long`
 
 ### Number
 
-```json
-{
-  "count": "{value:number()}"
-}
+```typescript
+const translations = {
+  count: "{value:number(2)}"  // → "1,234.56"
+};
+
+t('count', { value: 1234.56 });
 ```
+
+Parameter: number of decimal places (default: 2)
 
 ### Plural
 
-```json
-{
-  "items": "{count:plural()}"
-}
+```typescript
+const translations = {
+  items: "{count:plural(item,items)}"
+};
+
+t('items', { count: 1 });  // → "item"
+t('items', { count: 5 });  // → "items"
 ```
 
 ## Custom Formatters
 
-Create custom formatters per locale:
+Extend with your own formatters:
 
 ```typescript
-// formatters/username.en.ts
-export const username = (value: string) => `@${value}`;
-
-// formatters/username.fr.ts
-export const username = (value: string) => `@${value}`;
-```
-
-Register them:
-
-```tsx
-import { EasyIntlProvider } from "@odiflo/easy-intl";
-import { username } from "./formatters/username.en";
+const customFormatters = {
+  uppercase: (value: string) => value.toUpperCase(),
+  username: (value: string) => `@${value}`,
+};
 
 <EasyIntlProvider
-  value={{
-    locale: "en",
-    formatters: { username },
-  }}
+  locale="en"
+  translations={translations}
+  formatters={customFormatters}
 >
   {children}
-</EasyIntlProvider>;
+</EasyIntlProvider>
 ```
 
-Use in translations:
-
-```json
-{
-  "welcome": "Welcome {name:username()}!"
-}
+Usage:
+```typescript
+const translations = {
+  user: "Hello {name:uppercase()}!",  // → "Hello JOHN!"
+  mention: "{handle:username()}"       // → "@johndoe"
+};
 ```
+
+## Multi-locale Support
+
+Load different translations per locale:
+
+```typescript
+const translations = {
+  en: {
+    welcome: "Welcome {name}!",
+    price: "Price: {amount:currency(USD)}",
+  },
+  fr: {
+    welcome: "Bienvenue {name}!",
+    price: "Prix : {amount:currency(EUR)}",
+  },
+};
+
+const locale = getUserLocale(); // 'en' | 'fr'
+
+<EasyIntlProvider locale={locale} translations={translations[locale]}>
+  {children}
+</EasyIntlProvider>
+```
+
+## API Reference
+
+### `<EasyIntlProvider>`
+
+**Props:**
+- `locale: string` - Current locale (e.g., 'en', 'fr')
+- `translations: Record<string, string>` - Translation keys and templates
+- `formatters?: FormatterRegistry` - Custom formatters (optional)
+
+### `useT()`
+
+Returns a translation function with locale and formatters attached.
+
+**Returns:** `TranslationFunction`
+- `t(key: string, params?: Record<string, any>): string`
+- `t.locale: string` - Current locale
+- `t.formatters: FormatterRegistry` - Available formatters
 
 ## Formatter Syntax
 
-```
-{variable:formatter(param1,param2)}
-```
+Format: `{variable:formatter(param1,param2)}`
 
-Examples:
-
-- `{price:currency(USD)}` - Format as USD currency
-- `{date:date(long)}` - Long date format
-- `{count:plural()}` - Pluralize based on count
-- `{name:username()}` - Custom formatter
-
-## Philosophy
-
-**Co-location over centralization**
-
-Instead of massive translation files, keep translations next to components:
-
-```
-❌ locales/en.json (1000+ keys)
-✅ PostCard.en.t.json (5-10 keys)
+**Examples:**
+```typescript
+"{price:currency(EUR)}"           // Currency with specific code
+"{date:date(long)}"               // Date with format
+"{count:number(4)}"               // Number with decimals
+"{items:plural(item,items)}"      // Plural with forms
+"{name:uppercase()}"              // Custom formatter
 ```
 
-**Benefits:**
+## TypeScript
 
-- ✅ Delete component = translations deleted automatically
-- ✅ No orphaned keys
-- ✅ Better team collaboration (no merge conflicts)
-- ✅ Easier to maintain
-- ✅ Scalable
+Full type safety:
+
+```typescript
+import type { TranslationFunction, FormatterRegistry } from "@odiflo/easy-intl";
+
+const t: TranslationFunction = useT();
+const formatters: FormatterRegistry = { /* ... */ };
+```
 
 ## License
 
-MIT
+MIT © Israel Emmanuel Matenly Forestal

@@ -11,6 +11,7 @@ export type TranslationKeys = Record<string, string>;
 export interface EasyIntlConfig {
   locale: string;
   formatters: FormatterRegistry;
+  translations: TranslationKeys;
 }
 
 export interface TranslationFunction {

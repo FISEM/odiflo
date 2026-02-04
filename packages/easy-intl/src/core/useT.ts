@@ -32,13 +32,18 @@ async function loadTranslations(
  * t('welcome', { name: 'John' }) → "Welcome John!"
  */
 export function useT(): TranslationFunction {
-  const { locale, formatters } = useEasyIntl();
+  const { locale, formatters, translations } = useEasyIntl();
 
   // Simple function call
   const translationFunction = ((key: string, params?: Record<string, any>) => {
-    // TODO: Implement when build-time plugin is ready
-    // For now, return placeholder
-    return `[Translation: ${key}]`;
+    const template = translations[key];
+
+    if (!template) {
+      console.warn(`[easy-intl] Missing translation: ${key}`);
+      return key; // Fallback: return the key itself
+    }
+
+    return parseTranslation(template, params || {}, formatters, locale);
   }) as TranslationFunction;
 
   // Attach locale and formatters as properties

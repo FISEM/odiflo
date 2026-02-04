@@ -5,10 +5,10 @@ export { parseTranslation } from "./core/parser";
 
 // Formatters
 export { defaultFormatters } from "./formatters";
-export type { Formatter } from "./formatters";
 
 // Types
 export type {
+  Formatter,
   EasyIntlConfig,
   FormatterRegistry,
   TranslationKeys,
