@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EasyIntlProvider } from "@odiflo/easy-intl";
+import IntlProvider from "@/components/IntlProvider";
 import "./globals.css";
 
 // Translations EN
@@ -39,9 +39,9 @@ export default function RootLayout({
   return (
     <html lang={locale}>
       <body className="antialiased">
-        <EasyIntlProvider locale={locale} translations={translations}>
+        <IntlProvider locale={locale} translations={translations}>
           {children}
-        </EasyIntlProvider>
+        </IntlProvider>
       </body>
     </html>
   );

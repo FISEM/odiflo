@@ -7,14 +7,21 @@
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
-            "require": "./dist/index.js",
-            "import": "./dist/index.mjs",
-            "types": "./dist/index.d.ts"
+            "react-server": {
+                "require": "./dist/react-server.js",
+                "import": "./dist/react-server.mjs",
+                "types": "./dist/react-server.d.ts"
+            },
+            "default": {
+                "require": "./dist/react-client.js",
+                "import": "./dist/react-client.mjs",
+                "types": "./dist/react-client.d.ts"
+            }
         }
     },
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm --dts",
-        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/react-client.ts src/react-server.ts --format cjs,esm --dts --splitting=false",
+        "dev": "tsup src/react-client.ts src/react-server.ts --format cjs,esm --dts --watch --splitting=false",
         "type-check": "tsc --noEmit",
         "test": "jest",
         "test:watch": "jest --watch",
@@ -29,7 +36,9 @@
         "nextjs",
         "react",
         "formatters",
-        "co-location"
+        "co-location",
+        "ssr",
+        "server-components"
     ],
     "author": "Israel Emmanuel Matenly Forestal",
     "license": "MIT",
