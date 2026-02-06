@@ -1,44 +1,58 @@
+t('price', { amount: 49.99 });
+t('published', { date: new Date() });
+t('count', { value: 1234.56 });
+t('items', { count: 1 }); // → "item"
+t('items', { count: 5 }); // → "items"
+
 # @odiflo/easy-intl
 
-Component-level internationalization with simple API and custom formatters.
+Component-level internationalization with a Functional Pipeline engine. Built for performance-critical applications where data structures are decoupled from the translation layer.
 
 ## Features
 
-- ✅ **Simple API** - Clean syntax `t('key', params)` 
-- ✅ **Custom formatters** - Extensible formatter system with `{var:formatter(params)}`
-- ✅ **Type-safe** - Full TypeScript support
-- ✅ **Lightweight** - Minimal bundle size
-- ✅ **React 16.8+** - Works with all modern React versions
+- ✅ **Nested Property Access** — Access deep data directly: `{user.profile.name}`
+- ✅ **Method Training (..)** — Transform data via functional pipelines: `{val..upper()}`
+- ✅ **Namespaced Formatters** — Organize logic into domains: `{val..Math.round()}`
+- ✅ **Method Chaining** — String multiple transformations: `{v..round()..currency(USD)}`
+- ✅ **Isomorphic** — Works in Next.js Server Components and the browser.
+- ✅ **Lightweight** — Minimal bundle size with O(1) memory performance.
 
 ## Installation
 
 ```bash
 npm install @odiflo/easy-intl
-# or
-pnpm add @odiflo/easy-intl
 ```
-
-**Requirements:**
-- React >= 16.8.0 (hooks support)
-- Works with React 16.8+, 17.x, 18.x, and 19.x
 
 ## Quick Start
 
 ### 1. Setup Provider
 
 ```tsx
-// app/layout.tsx
 import { EasyIntlProvider } from "@odiflo/easy-intl";
 
+const formatters = {
+  upper: (val) => val.toUpperCase(),
+  Math: {
+    round: (val) => Math.round(val),
+  },
+  currency: (val, locale, code = "USD") =>
+    new Intl.NumberFormat(locale, { style: "currency", currency: code }).format(
+      val,
+    ),
+};
+
 const translations = {
-  welcome: "Welcome {name}!",
-  price: "Price: {amount:currency(USD)}",
-  readMore: "Read more",
+  welcome: "Welcome, {user.name..upper()}!",
+  balance: "Balance: {user.account.balance..Math.round()..currency(CAD)}",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <EasyIntlProvider locale="en" translations={translations}>
+    <EasyIntlProvider
+      locale="en"
+      translations={translations}
+      formatters={formatters}
+    >
       {children}
     </EasyIntlProvider>
   );
@@ -48,169 +62,32 @@ export default function RootLayout({ children }) {
 ### 2. Use in Component
 
 ```tsx
-// PostCard.tsx
 import { useT } from "@odiflo/easy-intl";
 
-export function PostCard({ username, price }) {
+export function ProfileCard({ user }) {
   const t = useT();
-
   return (
     <div>
-      <h3>{t('welcome', { name: username })}</h3>
-      <p>{t('price', { amount: price })}</p>
-      <a>{t('readMore')}</a>
+      <h3>{t("welcome", { user })}</h3>
+      <p>{t("balance", { user })}</p>
     </div>
   );
 }
 ```
 
-**Output:**
-```
-Welcome John!
-Price: $49.00
-Read more
-```
+## Syntax Grammar
 
-## Built-in Formatters
+| Symbol | Usage      | Description                               | Example                 |
+| ------ | ---------- | ----------------------------------------- | ----------------------- |
+| .      | Dot        | Navigate deeper into a Data Object        | `{user.name}`           |
+| ..     | Double Dot | Enter the Method Training (Logic) domain  | `{val..upper()}`        |
+| ..     | Pipe       | Chain a new method to the previous result | `{v..round()..upper()}` |
 
-### Currency
+## Why it's Revolutionary
 
-```typescript
-const translations = {
-  price: "{amount:currency(USD)}"  // → "$49.99"
-};
+Unlike next-intl or i18next which use the rigid ICU MessageFormat, easy-intl treats translation strings as Functional Pipelines.
 
-t('price', { amount: 49.99 });
-```
-
-Supported currencies: USD, EUR, GBP, JPY, etc. (all ISO 4217 codes)
-
-### Date
-
-```typescript
-const translations = {
-  published: "{date:date(long)}"  // → "January 15, 2024"
-};
-
-t('published', { date: new Date() });
-```
-
-Formats: `short`, `medium`, `long`
-
-### Number
-
-```typescript
-const translations = {
-  count: "{value:number(2)}"  // → "1,234.56"
-};
-
-t('count', { value: 1234.56 });
-```
-
-Parameter: number of decimal places (default: 2)
-
-### Plural
-
-```typescript
-const translations = {
-  items: "{count:plural(item,items)}"
-};
-
-t('items', { count: 1 });  // → "item"
-t('items', { count: 5 });  // → "items"
-```
-
-## Custom Formatters
-
-Extend with your own formatters:
-
-```typescript
-const customFormatters = {
-  uppercase: (value: string) => value.toUpperCase(),
-  username: (value: string) => `@${value}`,
-};
-
-<EasyIntlProvider
-  locale="en"
-  translations={translations}
-  formatters={customFormatters}
->
-  {children}
-</EasyIntlProvider>
-```
-
-Usage:
-```typescript
-const translations = {
-  user: "Hello {name:uppercase()}!",  // → "Hello JOHN!"
-  mention: "{handle:username()}"       // → "@johndoe"
-};
-```
-
-## Multi-locale Support
-
-Load different translations per locale:
-
-```typescript
-const translations = {
-  en: {
-    welcome: "Welcome {name}!",
-    price: "Price: {amount:currency(USD)}",
-  },
-  fr: {
-    welcome: "Bienvenue {name}!",
-    price: "Prix : {amount:currency(EUR)}",
-  },
-};
-
-const locale = getUserLocale(); // 'en' | 'fr'
-
-<EasyIntlProvider locale={locale} translations={translations[locale]}>
-  {children}
-</EasyIntlProvider>
-```
-
-## API Reference
-
-### `<EasyIntlProvider>`
-
-**Props:**
-- `locale: string` - Current locale (e.g., 'en', 'fr')
-- `translations: Record<string, string>` - Translation keys and templates
-- `formatters?: FormatterRegistry` - Custom formatters (optional)
-
-### `useT()`
-
-Returns a translation function with locale and formatters attached.
-
-**Returns:** `TranslationFunction`
-- `t(key: string, params?: Record<string, any>): string`
-- `t.locale: string` - Current locale
-- `t.formatters: FormatterRegistry` - Available formatters
-
-## Formatter Syntax
-
-Format: `{variable:formatter(param1,param2)}`
-
-**Examples:**
-```typescript
-"{price:currency(EUR)}"           // Currency with specific code
-"{date:date(long)}"               // Date with format
-"{count:number(4)}"               // Number with decimals
-"{items:plural(item,items)}"      // Plural with forms
-"{name:uppercase()}"              // Custom formatter
-```
-
-## TypeScript
-
-Full type safety:
-
-```typescript
-import type { TranslationFunction, FormatterRegistry } from "@odiflo/easy-intl";
-
-const t: TranslationFunction = useT();
-const formatters: FormatterRegistry = { /* ... */ };
-```
+Instead of destructuring your objects in React to satisfy a "dumb" translation string, you pass the whole object and let the translation layer decide how to "train" that data for the UI.
 
 ## License
 
