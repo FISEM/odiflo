@@ -1,59 +1,34 @@
 "use client";
 
+import { useSyncExternalStore, useCallback } from "react";
 import { useEasyIntl } from "./context";
+import { intlStore } from "./store";
+import { parseTranslation } from "./parser";
 import type { TranslationFunction } from "../types";
 
-/**
- * Parse translation string with variable substitution and formatters
- */
-function parseTranslation(
-  template: string,
-  params?: Record<string, any>,
-  locale?: string,
-  formatters?: any,
-): string {
-  if (!params) return template;
+export function useT(componentId: string = "unknown"): TranslationFunction {
+  const { locale, formatters } = useEasyIntl();
 
-  return template.replace(/\{([^}]+)\}/g, (match, key) => {
-    const parts = key.split(":");
-    const varName = parts[0].trim();
-    const formatterPart = parts[1]?.trim();
+  const state = useSyncExternalStore(
+    intlStore.subscribe,
+    intlStore.getSnapshotAll,
+    () => new Map(),
+  );
 
-    const value = params[varName];
-    if (value === undefined) return match;
+  const t = useCallback(
+    (key: string, params?: Record<string, any>) => {
+      const template = state.get(componentId)?.[key];
 
-    if (!formatterPart) return String(value);
+      if (!template) {
+        // Removed process.env check to avoid TS2580
+        console.warn(`[easy-intl] Missing key: "${key}" in ${componentId}`);
+        return key;
+      }
 
-    const formatterMatch = formatterPart.match(/^(\w+)\(([^)]*)\)$/);
-    if (!formatterMatch) return String(value);
-
-    const [, formatterName, args] = formatterMatch;
-    const formatter = formatters?.[formatterName];
-
-    if (!formatter) {
-      console.warn(`Unknown formatter: ${formatterName}`);
-      return String(value);
-    }
-
-    const formatterArgs = args
-      ? args.split(",").map((a: string) => a.trim())
-      : [];
-    return formatter(value, locale, ...formatterArgs);
-  });
-}
-
-export function useT(): TranslationFunction {
-  const { locale, translations, formatters } = useEasyIntl();
-
-  const t: TranslationFunction = (key, params) => {
-    const template = translations[key];
-    if (!template) {
-      console.warn(`[easy-intl] Missing translation: ${key}`);
-      return key;
-    }
-
-    return parseTranslation(template, params, locale, formatters);
-  };
+      return parseTranslation(template, params, locale, formatters);
+    },
+    [state, componentId, locale, formatters],
+  ) as TranslationFunction;
 
   t.locale = locale;
   t.formatters = formatters;

@@ -1,45 +1,41 @@
-"use client";
-
-import { createContext, useContext, type ReactNode } from "react";
-import type {
-  EasyIntlConfig,
-  FormatterRegistry,
-  TranslationKeys,
-} from "../types";
+import React, { createContext, useContext, useMemo } from "react";
 import { defaultFormatters } from "../formatters";
+import type { FormatterRegistry } from "../types";
 
-const EasyIntlContext = createContext<EasyIntlConfig | null>(null);
+interface EasyIntlContextProps {
+  locale: string;
+  formatters: FormatterRegistry;
+}
 
-export function useEasyIntl() {
+const EasyIntlContext = createContext<EasyIntlContextProps | undefined>(
+  undefined,
+);
+
+export const EasyIntlProvider: React.FC<{
+  locale: string;
+  formatters?: FormatterRegistry;
+  children: React.ReactNode;
+}> = ({ locale, formatters, children }) => {
+  // Memoize config to satisfy React optimization rules
+  const contextValue = useMemo(
+    () => ({
+      locale,
+      formatters: { ...defaultFormatters, ...formatters },
+    }),
+    [locale, formatters],
+  );
+
+  return (
+    <EasyIntlContext.Provider value={contextValue}>
+      {children}
+    </EasyIntlContext.Provider>
+  );
+};
+
+export const useEasyIntl = () => {
   const context = useContext(EasyIntlContext);
   if (!context) {
     throw new Error("useEasyIntl must be used within EasyIntlProvider");
   }
   return context;
-}
-
-interface EasyIntlProviderProps {
-  locale: string;
-  translations: TranslationKeys;
-  formatters?: FormatterRegistry;
-  children: ReactNode;
-}
-
-export function EasyIntlProvider({
-  locale,
-  translations,
-  formatters,
-  children,
-}: EasyIntlProviderProps) {
-  const value: EasyIntlConfig = {
-    locale,
-    translations,
-    formatters: { ...defaultFormatters, ...formatters },
-  };
-
-  return (
-    <EasyIntlContext.Provider value={value}>
-      {children}
-    </EasyIntlContext.Provider>
-  );
-}
+};

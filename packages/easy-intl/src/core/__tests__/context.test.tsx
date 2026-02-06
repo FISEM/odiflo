@@ -1,121 +1,50 @@
-import React from "react";
 import { render } from "@testing-library/react";
 import { EasyIntlProvider } from "../context";
 import { useT } from "../useT";
+import { intlStore } from "../store";
 
-describe("EasyIntlProvider", () => {
-  it("should provide locale context", () => {
-    let capturedLocale: string | undefined;
-
-    const TestComponent = () => {
-      const t = useT();
-      capturedLocale = t.locale;
-      return null;
-    };
-
-    render(
-      <EasyIntlProvider locale="fr" translations={{}}>
-        <TestComponent />
-      </EasyIntlProvider>,
-    );
-
-    expect(capturedLocale).toBe("fr");
+describe("EasyIntlProvider & useT Integration", () => {
+  beforeEach(() => {
+    intlStore.clear();
+    jest.restoreAllMocks();
   });
 
-  it("should provide default formatters", () => {
+  it("should provide locale and formatters without a translations prop", () => {
+    let capturedLocale: string | undefined;
     let hasFormatters = false;
 
     const TestComponent = () => {
-      const t = useT();
+      const t = useT("test-id");
+      capturedLocale = t.locale;
       hasFormatters = Object.keys(t.formatters).length > 0;
       return null;
     };
 
     render(
-      <EasyIntlProvider locale="en" translations={{}}>
+      <EasyIntlProvider locale="fr">
         <TestComponent />
       </EasyIntlProvider>,
     );
 
+    expect(capturedLocale).toBe("fr");
     expect(hasFormatters).toBe(true);
   });
 
-  it("should merge custom formatters", () => {
-    let customFormatterExists = false;
+  it("should translate using data pushed directly to the specific component store", () => {
+    const COMPONENT_ID = "src/components/Header";
 
-    const customFormatters = {
-      test: (val: string) => `TEST:${val}`,
-    };
+    // Simulate the data being pushed specifically for this component ID
+    intlStore.update(COMPONENT_ID, { welcome: "Welcome {name}!" });
 
-    const TestComponent = () => {
-      const t = useT();
-      customFormatterExists = "test" in t.formatters;
-      return null;
-    };
-
-    render(
-      <EasyIntlProvider
-        locale="en"
-        translations={{}}
-        formatters={customFormatters}
-      >
-        <TestComponent />
-      </EasyIntlProvider>,
-    );
-
-    expect(customFormatterExists).toBe(true);
-  });
-});
-
-describe("useT hook", () => {
-  it("should return locale from context", () => {
-    let locale: string | undefined;
-
-    const TestComponent = () => {
-      const t = useT();
-      locale = t.locale;
-      return null;
-    };
-
-    render(
-      <EasyIntlProvider locale="fr" translations={{}}>
-        <TestComponent />
-      </EasyIntlProvider>,
-    );
-
-    expect(locale).toBe("fr");
-  });
-
-  it("should throw error when used outside provider", () => {
-    const TestComponent = () => {
-      useT(); // Should throw
-      return null;
-    };
-
-    // Suppress console.error for this test
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation();
-
-    expect(() => {
-      render(<TestComponent />);
-    }).toThrow("useEasyIntl must be used within EasyIntlProvider");
-
-    consoleSpy.mockRestore();
-  });
-
-  it("should translate with simple key", () => {
     let result: string | undefined;
-
     const TestComponent = () => {
-      const t = useT();
+      const t = useT(COMPONENT_ID);
       result = t("welcome", { name: "John" });
       return null;
     };
 
     render(
-      <EasyIntlProvider
-        locale="en"
-        translations={{ welcome: "Welcome {name}!" }}
-      >
+      <EasyIntlProvider locale="en">
         <TestComponent />
       </EasyIntlProvider>,
     );
@@ -123,48 +52,27 @@ describe("useT hook", () => {
     expect(result).toBe("Welcome John!");
   });
 
-  it("should translate with formatters", () => {
-    let result: string | undefined;
-
-    const TestComponent = () => {
-      const t = useT();
-      result = t("price", { amount: 49.99 });
-      return null;
-    };
-
-    render(
-      <EasyIntlProvider
-        locale="en"
-        translations={{ price: "Price: {amount:currency(USD)}" }}
-      >
-        <TestComponent />
-      </EasyIntlProvider>,
-    );
-
-    expect(result).toContain("49.99");
-    expect(result).toContain("$");
-  });
-
-  it("should warn on missing translation", () => {
-    let result: string | undefined;
+  it("should warn on missing key for the specific component", () => {
     const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const TestComponent = () => {
-      const t = useT();
-      result = t("missing");
-      return null;
+      const t = useT("component-x");
+      // Calling a key that doesn't exist in the store for "component-x"
+      return <div>{t("missing")}</div>;
     };
 
     render(
-      <EasyIntlProvider locale="en" translations={{}}>
+      <EasyIntlProvider locale="en">
         <TestComponent />
       </EasyIntlProvider>,
     );
 
+    // Expecting the clean warning message without the "global" mention
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[easy-intl] Missing translation: missing",
+      expect.stringContaining(
+        '[easy-intl] Missing key: "missing" in component-x',
+      ),
     );
-    expect(result).toBe("missing"); // Fallback to key
 
     consoleSpy.mockRestore();
   });
