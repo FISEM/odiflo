@@ -10,7 +10,7 @@ function parseTranslation(
   template: string,
   params?: Record<string, any>,
   locale?: string,
-  formatters?: any
+  formatters?: any,
 ): string {
   if (!params) return template;
 
@@ -35,7 +35,9 @@ function parseTranslation(
       return String(value);
     }
 
-    const formatterArgs = args ? args.split(",").map((a: string) => a.trim()) : [];
+    const formatterArgs = args
+      ? args.split(",").map((a: string) => a.trim())
+      : [];
     return formatter(value, locale, ...formatterArgs);
   });
 }
@@ -46,7 +48,7 @@ export function useT(): TranslationFunction {
   const t: TranslationFunction = (key, params) => {
     const template = translations[key];
     if (!template) {
-      console.warn(`Missing translation: ${key}`);
+      console.warn(`[easy-intl] Missing translation: ${key}`);
       return key;
     }
 
